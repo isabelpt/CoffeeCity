@@ -1,0 +1,39 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Coffee City</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="style.css">
+  <link href="https://fonts.googleapis.com/css2?family=Averia+Serif+Libre:ital,wght@0,300;0,400;0,700;1,300;1,400;1,700&family=Courier+Prime:ital,wght@0,400;0,700;1,400;1,700&family=Radio+Canada:ital,wght@0,300..700;1,300..700&display=swap" rel="stylesheet">
+
+  <script src="https://d3js.org/d3.v7.min.js"></script>
+  <script src="https://unpkg.com/topojson-client@3"></script>
+</head>
+
+<body>
+  <div class="wrap">
+    <h1> Coffee City: An analysis of New York City coffee shops
+    </h1>
+    <p class="hint">By Isabel Prado-Tucker</p>
+    <p>I love coffee and New York City. I'd consider myself a home barista, but I also love to try new coffee shops in the city. (Hot take incoming...) I love the city,
+      but I must admit that other cities are beating NYC in the coffee department. While the city may not have the best coffee, it does have some of the best data availability, so I 
+      decided to take a peak behind the curtain, looking at NYC coffee shop inspection data. In the first figure, I mapped out coffee shops by density and inspection results. 
+      In the second figure, I attempt to settle the chain vs. indie coffee shop debate by seeing which is cleaner. Click one of the buttons to get started!
+    </p>
+    <div id="switch">
+        <button class="left-button" onclick="createCoffeeMap()">Neighborhood Analysis</button>
+        <button class="right-button" onclick="secondFig()">Chain vs. Indie Analysis</button>
+    </div>
+    <div class="card" id="map"></div>
+    <p>Source: DOHMH NYC Restaurant Inspection Results (Data Accessed: 02/21/2026) &amp; NYC Census (2010): Population by Neighborhood Tabulation Area</p>
+  </div>
+  <div class="tooltip" id="tooltip"></div>
+
+  <script src="main.js"></script>
+</body>
+</html>
