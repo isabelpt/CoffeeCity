@@ -25,6 +25,10 @@ h1{
   text-align: center;
 }
 
+p {
+  text-align: center;
+}
+
 .card{
   background: rgba(207, 192, 192, 0.564);
   /* border: 1px solid rgb(207, 192, 192); */
