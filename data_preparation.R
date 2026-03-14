@@ -26,7 +26,7 @@ Inspections <- Open_Data_Sample %>%
               c('Pre-permit (Operational) / Reopening Inspection'
                 ,'Cycle Inspection / Reopening Inspection'))
          & GRADE %in% c('A', 'B', 'C', 'P', 'Z')) %>%
-         select(CAMIS,`INSPECTION DATE`)
+         select(CAMIS,`INSPECTION DATE`) 
 
 new_restaurants <- Open_Data_Sample %>% 
   filter(`INSPECTION DATE` == "01/01/1900") # New restaurants don't have cuisine descriptions until they are inspected ig
@@ -156,5 +156,94 @@ coffee_points_sf <- coffeeShops_sf %>%
 # Need to decide if group by zipcodes or another metric <- census tract might be better (start with zipcode bc census tracts are very specifi)
 
 # Figure 2: Chain vs Indie
-chains <- c("Starbucks", "Blue Bottle", "Stumptown", "Joe Coffee", "Gregorys", "La Colombe", "Matto") # To be edited
-# Sort into chain and indie
+chains <- c("starbucks", "blue bottle", "stumptown", "joe coffee", "gregorys", "la colombe", "matto", "dunkin", "blank street", "panera") # To be edited
+chain_pattern <- paste(chains, collapse = "|")
+
+coffee_ci <- coffeeShops %>% 
+  mutate(
+    name = tolower(DBA),
+    # use the collapsed pattern string
+    chain = str_detect(name, chain_pattern) 
+  )
+
+top_15_codes <- coffee_ci %>%
+  filter(!is.na(`VIOLATION CODE`)) %>%
+  count(`VIOLATION CODE`, sort = TRUE) %>%
+  slice_max(n, n = 15) %>%
+  pull(`VIOLATION CODE`)
+
+chain_summary <- coffee_ci %>%
+  group_by(chain) %>%
+  summarise(
+    total = n(),
+    avgscore = mean(SCORE, na.rm = TRUE),
+    total_graded = sum(GRADE %in% c('A', 'B', 'C'), na.rm = TRUE),
+    propA = sum(GRADE == 'A', na.rm = TRUE) / total_graded,
+    propB = sum(GRADE == 'B', na.rm = TRUE) / total_graded,
+    propC = sum(GRADE == 'C', na.rm = TRUE) / total_graded,
+    propCritical = sum(`CRITICAL FLAG` == "Critical", na.rm = TRUE) / total,
+    .groups = "drop"
+  ) %>%
+  left_join(
+    coffee_ci %>%
+      filter(`VIOLATION CODE` %in% top_15_codes) %>%
+      group_by(chain, `VIOLATION CODE`) %>%
+      summarise(n = n(), .groups = "drop_last") %>%
+      mutate(prop = n / sum(n)) %>% 
+      select(-n) %>%
+      pivot_wider(names_from = `VIOLATION CODE`, 
+                  values_from = prop, 
+                  names_prefix = "prop_", 
+                  values_fill = 0),
+    by = "chain"
+  )
+
+# Save files
+#write_csv(chain_summary, "chain.csv")
+#write_csv(violation_lookup, "violations.csv")
+
+print(chain_summary)
+
+violation_lookup <- coffee_ci %>%
+  filter(`VIOLATION CODE` %in% top_15_codes) %>%
+  group_by(`VIOLATION CODE`) %>%
+  summarise(
+    description = first(`VIOLATION DESCRIPTION`),
+    description = str_squish(description),
+    .groups = "drop"
+  ) %>%
+  arrange(match(`VIOLATION CODE`, top_15_codes))
+
+# Preview results
+print(violation_lookup)
+
+
+#########################################
+library(tidyverse)
+
+all_violations_table <- coffee_ci %>%
+  filter(!is.na(`VIOLATION CODE`)) %>%
+  group_by(chain, `VIOLATION CODE`) %>%
+  tally() %>%
+  filter(n >= 5) %>% 
+  pivot_wider(names_from = `VIOLATION CODE`, values_from = n, values_fill = 0)
+
+v_matrix <- all_violations_table %>% select(-chain) %>% as.matrix()
+row.names(v_matrix) <- ifelse(all_violations_table$chain, "Chain", "Independent")
+
+chi_all <- chisq.test(v_matrix)
+
+# Residual > 2: More frequent than expected (Significant)
+# Residual < -2: Less frequent than expected (Significant)
+sig_violations <- as.data.frame(chi_all$residuals) %>%
+  rownames_to_column("ShopType") %>%
+  pivot_longer(-ShopType, names_to = "ViolationCode", values_to = "Residual") %>%
+  filter(abs(Residual) > 2) %>%
+  arrange(desc(abs(Residual)))
+
+sig_violations_final <- sig_violations %>%
+  left_join(violation_lookup, by = c("ViolationCode" = "VIOLATION CODE")) %>%
+  mutate(Status = if_else(Residual > 0, "More Likely", "Less Likely")) %>%
+  select(ShopType, ViolationCode, Status, Residual, description)
+
+print(sig_violations_final)

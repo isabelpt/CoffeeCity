@@ -50,7 +50,6 @@ function createCoffeeMap(selector) {
         .fitExtent([[padding, padding], [width - padding, height - padding]], geojson);
       const path = d3.geoPath().projection(projection);
   
-      // Initial UI Setup
       // Receipt labels for vaiables
       const labels = {
         per_capita: "Coffee Shops Per 10k Residents",
@@ -235,7 +234,6 @@ function createCoffeeMap(selector) {
         .attr("r", 0.8)
         .attr("fill", d => {
           const g = d.properties.GRADE;
-          // Use the dictionary we talked about
           const colors = {
               "A": "#2ecc71", // Green
               "B": "#f1c40f", // Yellow
@@ -347,7 +345,7 @@ function createCoffeeMap(selector) {
             const rank = Math.round(d.properties[rankCol]);
             const val = formatVal(d.properties[variable]);
             
-            // Truncate name to 10 chars max
+            // Truncate to 10 chars max
             let name = d.properties.NTAName || "Unknown";
             if (name.length > 20) name = name.substring(0, 20);
           
@@ -362,7 +360,7 @@ function createCoffeeMap(selector) {
               .attr("x", 40).attr("y", 153 + (i * 12))
               .style("fill", "#2d3845")
               .style("font-size", "9px")
-              .style("font-family", "monospace") // <- monospace to ensure same len
+              .style("font-family", "monospace") 
               .text(fullLine);
           });
       
@@ -431,6 +429,198 @@ function createCoffeeMap(selector) {
     return dropdown;
 }
 
+function createRadarChart(selector) {
+  const container = d3.select(selector);
+  if (container.empty()) return;
+  
+  const width = container.node().clientWidth;
+  const height = Math.round(width * 0.6); 
+  const margin = { top: 60, right: 100, bottom: 20, left: 100 };
+  const radius = (Math.min(width, height) / 2 - Math.max(margin.top, margin.right)) * 0.9;
+  const tooltip = d3.select("#tooltip-chain");
+
+  const centerX = (width - margin.left)/2 - margin.left/4; 
+  const centerY = height / 2;
+
+  const svg = container.append("svg")
+      .attr("viewBox", `0 0 ${width} ${height}`);
+
+  // Title
+  svg.append("text")
+    .attr("x", width / 2) 
+    .attr("y", 60)
+    .attr("text-anchor", "middle")
+    .style("font-family", "Averia Serif Libre, serif")
+    .style("font-size", "24px")
+    .style("font-weight", "bold")
+    .style("fill", "#2d3845")
+    .text("Comparing top 15 most frequent violations: Chains vs. Independents");
+
+  const radarGroup = svg.append("g")
+      .attr("transform", `translate(${centerX + 80}, ${centerY})`); // Shifted right to make room for receipt
+
+  // Load data
+  Promise.all([
+      d3.csv("PreparedData/chain.csv"),
+      d3.csv("PreparedData/violations.csv"),
+      d3.xml("images/coffee_person.svg") 
+  ]).then(([summaryData, lookup, iconData]) => {
+      
+      const lookupMap = new Map(lookup.map(d => [d["VIOLATION CODE"], d.description]));
+      const axes = Object.keys(summaryData[0]).filter(d => d.startsWith("prop_"));
+      const totalAxes = axes.length;
+      const angleSlice = (Math.PI * 2) / totalAxes;
+
+      const maxVal = d3.max(summaryData, d => d3.max(axes, a => +d[a])) * 1.1;
+      const rScale = d3.scaleLinear().domain([0, maxVal]).range([0, radius]);
+
+      // Grid
+      const gridG = radarGroup.append("g");
+      for (let j = 0; j < 4; j++) {
+          const levelFactor = radius * ((j + 1) / 4);
+          gridG.append("circle").attr("r", levelFactor).style("fill", "none").style("stroke", "#2d3845").style("stroke-width", "0.5px");
+      }
+
+      // Axes
+      const axisG = radarGroup.selectAll(".axis")
+          .data(axes)
+          .enter()
+          .append("g")
+          .attr("class", "axis")
+          .on("mouseover", function(event, d) {
+              const code = d.replace("prop_", "");
+              const desc = lookupMap.get(code) || "No description available";
+              const chainVal = +summaryData.find(row => row.chain === "TRUE")[d];
+              const indieVal = +summaryData.find(row => row.chain === "FALSE")[d];
+              const comparison = chainVal > indieVal ? 
+                  "<span style='color:#1f78b4'><b>Chain</b></span>" : 
+                  "<span style='color:#6a3d9a'><b>Indie</b></span>";
+
+              tooltip.style("display", "block")
+                  .style("opacity", 1)
+                  .html(`
+                      <div style="max-width:200px">
+                          <strong>Code: ${code}</strong><br/>
+                          <small>${desc}</small><hr style="margin:5px 0"/>
+                          Chain: ${(chainVal * 100).toFixed(1)}%<br/>
+                          Indie: ${(indieVal * 100).toFixed(1)}%<br/>
+                          More common in: ${comparison}
+                      </div>
+                  `);
+              d3.select(this).select("line").style("stroke-width", "2px");
+          })
+          .on("mousemove", (event) => {
+              tooltip.style("left", (event.pageX + 15) + "px")
+                     .style("top", (event.pageY - 15) + "px");
+          })
+          .on("mouseout", function() {
+              tooltip.style("display", "none").style("opacity", 0);
+              d3.select(this).select("line").style("stroke-width", "0.5px").style("stroke", "#2d3845");
+          });
+      axisG.append("line")
+          .attr("class", "visible-line")
+          .attr("x1", 0).attr("y1", 0)
+          .attr("x2", (d, i) => rScale(maxVal) * Math.cos(angleSlice * i - Math.PI / 2))
+          .attr("y2", (d, i) => rScale(maxVal) * Math.sin(angleSlice * i - Math.PI / 2))
+          .style("stroke", "#2d3845").style("stroke-width", "0.5px");
+
+      axisG.append("line")
+          .attr("x1", 0).attr("y1", 0)
+          .attr("x2", (d, i) => rScale(maxVal) * Math.cos(angleSlice * i - Math.PI / 2))
+          .attr("y2", (d, i) => rScale(maxVal) * Math.sin(angleSlice * i - Math.PI / 2))
+          .style("stroke", "transparent")
+          .style("stroke-width", "12px")
+          .style("cursor", "pointer");
+
+      axisG.append("text")
+          .attr("x", (d, i) => rScale(maxVal * 1.1) * Math.cos(angleSlice * i - Math.PI / 2))
+          .attr("y", (d, i) => rScale(maxVal * 1.1) * Math.sin(angleSlice * i - Math.PI / 2))
+          .attr("text-anchor", "middle").style("font-size", "10px").style("font-family", "monospace")
+          .text(d => d.replace("prop_", ""));
+
+      // Radar Shapes
+      const radarLine = d3.lineRadial().radius(d => rScale(d.value)).angle((d, i) => i * angleSlice).curve(d3.curveLinearClosed);
+      const colors = { "TRUE": "#1f78b4", "FALSE": "#6a3d9a" };
+
+      summaryData.forEach((row) => {
+          const dataValues = axes.map(key => ({ axis: key, value: +row[key] }));
+          radarGroup.append("path").datum(dataValues).attr("d", radarLine)
+              .style("fill", colors[row.chain]).style("fill-opacity", 0.35)
+              .style("stroke", colors[row.chain]).style("stroke-width", "2px")
+              .style("pointer-events", "none");
+      });
+
+      const chainData = summaryData.find(d => d.chain === "TRUE");
+      const indieData = summaryData.find(d => d.chain === "FALSE");
+
+      drawRadarReceipt(svg, 20, 50, chainData, indieData, iconData);
+  });
+}
+
+function drawRadarReceipt(svg, x, y, chainData, indieData, iconData) {
+  const receiptGroup = svg.append("g").attr("class", "receipt");
+    receiptGroup.append("rect").attr("class", "receipt")
+      .attr("x", 30).attr("y", 150).attr("width", 200).attr("height", 350);
+
+    const header = receiptGroup.append("g").attr("class", "receipt-header");
+    const content = receiptGroup.append("g").attr("class", "receipt-content");
+  
+    header.append("text").attr("x", 75).attr("y", 190).attr("text-anchor", "middle").style("font-weight", "bold").style("font-size", "14px").style("fill", "#2d3845").text("COFFEE");
+    header.append("text").attr("x", 175).attr("y", 190).attr("text-anchor", "middle").style("font-weight", "bold").style("font-size", "14px").style("fill", "#2d3845").text("CITY");
+    
+    const imported = header.node().appendChild(iconData.documentElement);
+    d3.select(imported).attr("width", 50).attr("height", 50).attr("x", 100).attr("y", 160);
+  
+    // Static Information
+    header.append("text").attr("x", 40).attr("y", 220).style("fill", "#2d3845").style("font-size", "10px").text("------------------------------");
+    header.append("text").attr("x", 40).attr("y", 240).style("fill", "#2d3845").style("font-size", "10px").text("------------------------------");
+    header.append("text").attr("x", 40).attr("y", 310).style("fill", "#2d3845").style("font-size", "10px").text("------------------------------");
+    // header.append("text").attr("x", 40).attr("y", 135).style("fill", "#2d3845").style("font-size", "10px").text("Top 5 Neighborhoods:");
+    // header.append("text").attr("x", 40).attr("y", 220).style("fill", "#2d3845").style("font-size", "10px").text("Bottom 5 Neighborhoods:");
+    header.append("text").attr("x", 40).attr("y", 475).style("fill", "#2d3845").style("font-size", "10px").text("------------------------------");
+    // header.append("text").attr("x", 36).attr("y", 325).style("fill", "#2d3845").style("font-size", "10px").text("Click on a neighboorhood to see");
+    // header.append("text").attr("x", 100).attr("y", 340).style("fill", "#2d3845").style("font-size", "10px").text("the shops!");
+    header.append("text").attr("x", 90).attr("y", 490).style("fill", "#2d3845").style("font-size", "14px").style("font-weight", "bold").text("THANK YOU");
+  
+    header.append("text").attr("x", 130).attr("y", 230).attr("text-anchor", "middle").style("font-weight", "bold").style("font-size", "12px").style("fill", "#2d3845").text("FINAL INSPECTION REPORT");
+    
+  // Stats
+  const statsY = 255;
+  const metrics = [
+    { l: "CHAIN A-GRADE", v: (chainData.propA * 100).toFixed(1) + "%" },
+    { l: "INDIE A-GRADE", v: (indieData.propA * 100).toFixed(1) + "%" },
+    { l: "CHAIN CRITICAL", v: (chainData.propCritical * 100).toFixed(1) + "%" },
+    { l: "INDIE CRITICAL", v: (indieData.propCritical * 100).toFixed(1) + "%" }
+  ];
+
+  metrics.forEach((m, i) => {
+    const line = m.l.padEnd(20, ".") + m.v.padStart(8, ".");
+    header.append("text").attr("x", 45).attr("y", statsY + (i * 15)).text(line)
+    .style("fill", "#2d3845").style("font-size", "10px");
+  });
+
+  // // Synthesis
+  const synthY = statsY + 70;
+  // textGroup.append("text").attr("x", 10).attr("y", synthY).style("font-weight", "bold").text("STORES ANALYSIS:");
+
+  const gradeDiff = (chainData.propA - indieData.propA) * 100;
+  const analysisText = [
+    `Chains are 8.3% more consistent`,
+    `with A-Grades and 13.7% less`,
+    `likely to have a critical`,
+    `violation.`,
+    `Check out the radar chart`,
+    'to see which violations occur',
+    'most frequently in chain vs.',
+    'indie shops.'
+  ];
+
+  analysisText.forEach((line, i) => {
+    header.append("text").attr("x", 38).attr("y", synthY + 20 + (i * 14)).text(line).style("fill", "#2d3845").style("font-size", "10px");
+  });
+
+}
+
 // Buttons to switch between figures
 d3.select(".left-button").on("click", function() {
   // Show clicked
@@ -457,12 +647,9 @@ d3.select(".right-button").on("click", function() {
     .style("font-weight", "bold")
     .style("background-color", "rgb(207, 192, 192)");
 
-  // Clear prev fig
   d3.select("#map").selectAll("*").remove();
   d3.select(".controls").remove();
   
-  // placeholder
-  d3.select("#map").append("div")
-    .style("padding", "20px")
-    .text("Right Button Content Goes Here...");
+  // Create Figure 2!
+  createRadarChart("#map");
 });

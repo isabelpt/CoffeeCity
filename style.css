@@ -60,7 +60,7 @@ svg{
 .receipt {
     font-family:'Courier Prime', Courier, monospace;
     fill: rgba(222, 222, 222, 0.98);
-    color: #2d3845;
+    color:   c;
 }
 
 #switch {
@@ -89,4 +89,28 @@ button {
 .right-button {
   border-top-right-radius: 10px;
   border-bottom-right-radius: 10px;
+}
+
+#tooltip-chain {
+  background: rgba(30, 21, 21, 0.92);
+  border: 1px solid rgba(255,255,255,0.14);
+  color: #f3f4f6;
+  position: absolute;
+  max-width: 250px; 
+  height: auto;
+  padding: 10px;
+  border-radius: 4px;
+  pointer-events: none; 
+  font-family: "Radio Canada", sans-serif;
+  font-size: 12px;
+  line-height: 1.4;
+  box-shadow: 2px 2px 10px rgba(0,0,0,0.2);
+  z-index: 1000;
+  word-wrap: break-word; 
+  overflow-wrap: break-word;
+  white-space: normal; 
+}
+
+#map {
+  margin-top: 20px;
 }

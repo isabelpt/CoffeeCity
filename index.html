@@ -25,14 +25,16 @@
       <b>Click one of the buttons to get started!</b>
     </p>
     <div id="switch">
-        <button class="left-button" onclick="createCoffeeMap()">Neighborhood Analysis</button>
-        <button class="right-button" onclick="secondFig()">Chain vs. Indie Analysis</button>
-    </div>
+      <button class="left-button" onclick="createCoffeeMap('#map')">Neighborhood Analysis</button>
+      <button class="right-button" onclick="createRadarChart('#map')">Chain vs. Indie Analysis</button>
+  </div>
+  
+  <div class="card" id="map" style="min-height: 400px;"></div>
     <div class="card" id="map"></div>
     <p>Source: DOHMH NYC Restaurant Inspection Results (Data Accessed: 02/21/2026) &amp; NYC Census (2010): Population by Neighborhood Tabulation Area</p>
   </div>
   <div class="tooltip" id="tooltip"></div>
-
+  <div class="tooltip" id="tooltip-chain"></div>
   <script src="main.js"></script>
 </body>
 </html>
