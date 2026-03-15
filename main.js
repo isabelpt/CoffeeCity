@@ -435,15 +435,15 @@ function createRadarChart(selector) {
   
   const width = container.node().clientWidth;
   const height = Math.round(width * 0.6); 
-  const margin = { top: 60, right: 100, bottom: 20, left: 100 };
-  const radius = (Math.min(width, height) / 2 - Math.max(margin.top, margin.right)) * 0.9;
+  const margin = { top: 100, right: 100, bottom: 120, left: 100 };
+  const radius = (Math.min(width, height) / 2 - Math.max(margin.top, margin.right)) * 0.9 + 50;
   const tooltip = d3.select("#tooltip-chain");
 
   const centerX = (width - margin.left)/2 - margin.left/4; 
-  const centerY = height / 2;
+  const centerY = height / 2 + 50;
 
   const svg = container.append("svg")
-      .attr("viewBox", `0 0 ${width} ${height}`);
+      .attr("viewBox", `0 0 ${width} ${height + 20}`);
 
   // Title
   svg.append("text")
@@ -600,7 +600,7 @@ function drawRadarReceipt(svg, x, y, chainData, indieData, iconData) {
   });
 
   // // Synthesis
-  const synthY = statsY + 70;
+  const synthY = statsY + 50;
   // textGroup.append("text").attr("x", 10).attr("y", synthY).style("font-weight", "bold").text("STORES ANALYSIS:");
 
   const gradeDiff = (chainData.propA - indieData.propA) * 100;
@@ -619,6 +619,8 @@ function drawRadarReceipt(svg, x, y, chainData, indieData, iconData) {
     header.append("text").attr("x", 38).attr("y", synthY + 20 + (i * 14)).text(line).style("fill", "#2d3845").style("font-size", "10px");
   });
 
+  header.append("text").attr("x", 45).attr("y", 445).style("fill", "#2d3845").style("font-size", "12px").style("font-weight", "bold").text("HOVER OVER A VIOLATION");
+  header.append("text").attr("x", 55).attr("y", 460).style("fill", "#2d3845").style("font-size", "12px").style("font-weight", "bold").text("FOR ITS DESCRIPTION");
 }
 
 // Buttons to switch between figures
